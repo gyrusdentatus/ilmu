@@ -11,14 +11,6 @@
 ;; See the "Replicating Guix" section in the manual.
 
 (specifications->manifest
-  (list "guile"
-        "emacs-geiser"
-        "emacs-sly"
-	"emacs-evil"
-        "emacs-evil-collection"
-        "zathura-pdf-mupdf"
-        "zathura"
-        "curl"
-        "tree"
+  (list ;; I moved all this stuff to the system definition for now.
         "emacs-youtube-dl"
         ))
