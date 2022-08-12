@@ -1,9 +1,22 @@
+### Introduction
+
 This repository will house the guix system that will seed the "tala saman" network.
 
-Tala saman is my attempt at implementing datalisp, feel free to make more convincing attempts.
+Tala saman is my attempt at implementing datalisp, feel free to make more convincing 
+attempts, or help me with mine, or whatever is most comfortable for you.
 
-The word "vegur" both means "road" or "path" and it also means "one who assesses" or "weighing" finally it also means to kill someone but only in the Icelandic sagas.
+The word "vegur" both means "road" (or "path") and "one who assesses" it can also mean
+"weighing" or finally, in the Icelandic sagas, it means "to murder" (i.e. to censor).
 
-I feel all meanings are quite appropriate since all this bureaucracy is killing the human spirit, we should stop spending so much time staring at symbols.
+I feel all meanings are quite appropriate since all this bureaucracy is killing the 
+human spirit, we should stop spending so much time staring at symbols. To do that
+we should work together and prioritize which pixels are worth looking at until we
+don't need these things anymore.
 
-Anyway, feel free to participate and help me reach escape velocity.
+Feel free to participate and help me reach escape velocity!
+
+### Organization
+
+Mostly undecided, for now this will host the raw material I use to organize my
+system but with experience it will get refined. Of course `tala` and `saman` will
+be used to manage this material to an ever increasing extent.
