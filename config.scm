@@ -31,8 +31,7 @@
             "emacs-evil-collection" "zathura" "zathura-pdf-mupdf"
 	    "ungoogled-chromium" "setxkbmap" "font-dejavu" "tree"
             "qutebrowser" "sbcl" "stumpwm" "sbcl-stumpwm-ttf-fonts"
-	    ;; From generated config
-            "dmenu" "xterm" "nss-certs"))
+            "sbcl-slynk" "cl-slime-swank" "xterm" "nss-certs"))
 
       (list `(,stumpwm "lib"))
       %base-packages))

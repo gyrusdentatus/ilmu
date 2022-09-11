@@ -41,6 +41,8 @@
 (evil-define-key 'visual sly-mode-map (kbd "<leader>e") 'sly-eval-region)
 (evil-define-key 'normal sly-mode-map (kbd "<leader>e") 'sly-eval-last-expression)
 (evil-define-key 'normal sly-mode-map (kbd "<leader>h") 'sly-documentation)
+;; Fix annoying thing in sly repl.
+(evil-define-key 'insert sly-mode-map (kbd ",") 'self-insert-command)
 
 ;; emacs-youtube-dl
 
