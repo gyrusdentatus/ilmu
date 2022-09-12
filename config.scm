@@ -1,3 +1,4 @@
+;; TODO: investigate whether to set XDG_DATA_HOME .cache or to keep it at .local/share
 (use-modules (gnu))
 (use-package-modules wm)
 (use-service-modules
@@ -31,7 +32,7 @@
             "emacs-evil-collection" "zathura" "zathura-pdf-mupdf"
 	    "ungoogled-chromium" "setxkbmap" "font-dejavu" "tree"
             "qutebrowser" "sbcl" "stumpwm" "sbcl-stumpwm-ttf-fonts"
-            "sbcl-slynk" "cl-slime-swank" "xterm" "nss-certs"))
+            "sbcl-slynk" "cl-slime-swank" "fd" "xterm" "nss-certs"))
 
       (list `(,stumpwm "lib"))
       %base-packages))

@@ -17,15 +17,38 @@ Serialize and load / unload for various state
 API for datalisp (maybe via swank thread)
 
 
-
-
-
-
-
-
-
-
 |#
+
+
+
+
+;; queries : check whether layout offers motion or if split is required
+
+;; check-window
+;; move-focus direction
+;; check-window -> (if same (progn split (move-window direct))
+;;                          (progn (fprev) ;; moves selection to previous
+;;                                 (move-window direction)))
+
+
+;; splits : make necessary split to perform motion given query
+;; split -> exchange-windows in direction of split == moving window with split.
+
+;; only :: removes all splits.
+;; remove-split
+;; hsplit  (-equally -uniformly)
+;; vsplit
+
+;; motions : package queries and splits into useful actions
+
+(defcommand go-left () ()
+  )
+(defcommand go-right () ()
+  )
+(defcommand go-up () ()
+  )
+(defcommand go-down () ()
+  )
 
 
 
