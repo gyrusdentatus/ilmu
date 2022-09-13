@@ -13,7 +13,7 @@
   (locale "en_IE.utf8")
   (timezone "Europe/London")
   (keyboard-layout
-    (keyboard-layout "us" "altgr-intl"))
+    (keyboard-layout "us,is" "altgr-intl" #:options '("grp:win_space_toggle" "caps:hyper")))
   (host-name "vegur")
   (users (cons* 
                 (user-account
