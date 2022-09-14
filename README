@@ -25,3 +25,14 @@ be used to manage this material to an ever increasing extent.
 
 Keyboards are nightmarefuel. Probably it is unnecessary for stump to do any keyboard stuff.
 
+TODO: Add nyxt to the mix.
+
+Programming stumpwm:
+- commands like swap-windows is using (pull-window window frame) behind the scenes
+- (window-frame window) gives the frame of some window
+- when `pull-window` is only given a window argument then it brings it to current frame
+- splitting uses `split-frame-in-dir` which has optional direction argument which is row/column.
+
+Using the system:
+- Headphones may not work until you `guix shell alsa-utils` and unmute them in `alsamixer`
+- I haven't needed nonguix yet since this is a desktop machine.

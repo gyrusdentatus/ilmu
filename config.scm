@@ -13,7 +13,8 @@
   (locale "en_IE.utf8")
   (timezone "Europe/London")
   (keyboard-layout
-    (keyboard-layout "us,is" "altgr-intl" #:options '("grp:win_space_toggle" "caps:hyper")))
+    (keyboard-layout "us,is" "altgr-intl" 
+		     #:options '("grp:win_space_toggle" "caps:super" "grp_led:caps")))
   (host-name "vegur")
   (users (cons* 
                 (user-account
@@ -28,11 +29,12 @@
     (append
       (map specification->package ;; TODO: clean this up
         (list "git" "xclip" "kitty" "neovim" "pavucontrol" "curl"
-            "emacs" "emacs-geiser" "emacs-sly" "emacs-evil" "guile"
-            "emacs-evil-collection" "zathura" "zathura-pdf-mupdf"
-	    "ungoogled-chromium" "setxkbmap" "font-dejavu" "tree"
-            "qutebrowser" "sbcl" "stumpwm" "sbcl-stumpwm-ttf-fonts"
-            "sbcl-slynk" "cl-slime-swank" "fd" "xterm" "nss-certs"))
+            "emacs-geiser" "emacs-evil" "emacs-evil-collection" 
+            "emacs-sly" "sbcl" "stumpwm-with-slynk" "sbcl-slynk"
+            "emacs" "guile" "zathura" "zathura-pdf-mupdf" "tree"
+	    "ungoogled-chromium" "setxkbmap" "font-dejavu" "fd"
+            "sbcl-stumpwm-ttf-fonts" "qutebrowser" "xterm" 
+	    "nyxt" "nss-certs"))
 
       (list `(,stumpwm "lib"))
       %base-packages))
@@ -40,7 +42,7 @@
     (append
       (list (service openssh-service-type)
             (service cups-service-type)
-            ;;(service alsa-service-type)
+            ;; (service alsa-service-type)
             (set-xorg-configuration
               (xorg-configuration
                 (keyboard-layout keyboard-layout))))

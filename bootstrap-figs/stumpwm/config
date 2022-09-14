@@ -1,0 +1,41 @@
+(in-package :stumpwm)
+
+;; utils
+
+(defun show-config-pathname (filename)
+  (uiop:xdg-config-home #p"stumpwm/" filename))
+
+(defun load-config-file (file)
+  (load (show-config-pathname file)))
+
+#| REGARDING CACHE DIRECTORY
+~/.cache is less permanent data, should be recoverable if it is destroyed.
+~/.local/share is XDG_DATA_HOME by default, this data is not as transient.
+|#
+
+(defun show-cache-pathname (filename)
+  (uiop:xdg-data-home #p"stumpwm/" filename))
+
+
+;; init
+
+(require :ttf-fonts)
+(setf *data-dir* (show-cache-pathname ""))
+(setf xft:*font-dirs* '("/run/current-system/profile/share/fonts/"))
+(setf clx-truetype:+font-cache-filename+ (concat (getenv "HOME") "/.fonts/font-cache.sexp"))
+(xft:cache-fonts)
+(set-font (make-instance 'xft:font :family "DejaVu Sans Mono" :subfamily "Book" :size 11))
+
+
+;; TODO: causal relation between keyboard options in guix system config and key-bindings in stump
+;;       will be kept track of in the datalisp template logic that generates the configuration file.
+
+(load-config-file "internals.lisp");; patches to stump core, useful for commands.
+(load-config-file "commands.lisp") ;; define various commands that can be bound.
+(load-config-file "keymaps.lisp")  ;; bind commands to keys in keymaps to interact.
+
+#| bind keys to *root-map* for C-t prefixed commands and *top-map* for unprefixed commands.
+(stumpwm:define-key stumpwm:*root-map* (stumpwm:kbd "u") "exec kitty")
+|#
+
+
