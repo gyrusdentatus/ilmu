@@ -116,12 +116,18 @@ desktop when starting."
 	    (frame-number (tile-group-current-frame group)))
 	t
 	(progn
-	  (fprev)
+	  (fselect frame)
 	  nil))))
 
-(defun detect-empty-frame (group)
+(defun detect-last-window (group &optional (frame nil))
   "Checks if the current frame has only one window"
-  (= 0 (length (frame-windows (current-group) (tile-group-current-frame (current-group))))))
+  (unless frame (setf frame (tile-group-current-frame (current-group))))
+  (= 1 (length (frame-windows (current-group) frame))))
+
+(defun detect-empty-frame (group &optional (frame nil))
+  "Checks if the current frame has only one window"
+  (unless frame (setf frame (tile-group-current-frame (current-group))))
+  (= 0 (length (frame-windows (current-group) frame))))
 
 (defcommand test-detection () ()
   (when (detect-monitor-edge (current-group) :up)

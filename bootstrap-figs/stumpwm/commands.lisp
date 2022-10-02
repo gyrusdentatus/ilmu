@@ -93,15 +93,24 @@ concepts can be avoided by user who just opens, closes and rearranges windows.
 "Split the current frame into 2 frames in the desired direction."
   (split-frame-in-dir (current-group) dir 1/2))
 
+#| Case analysis
+
+Last window -> If move in valid direction: close split, otherwise: noop.
+Not last window -> If move in invalid direction: open split and move-window, otherwise: move-window.
+
+|#
+
 (defcommand (move tile-group) (dir) ((:direction "Direction: "))
   "Split the frame if necessary to move in direction. Closes split if it leaves empty frame."
-  (when (detect-monitor-edge (current-group) dir)
-    (dirsplit dir))
-  (move-window dir)
-  (fprev)
-  (when (detect-empty-frame (current-group))
-    (remove-split))
-  (fnext))
+  (if (detect-last-window (current-group))
+      (unless (detect-monitor-edge (current-group) dir)
+	(let ((last-frame (tile-group-current-frame (current-group))))
+	  (move-window dir)
+	  (remove-split (current-group) last-frame)))
+      (progn
+	(when (detect-monitor-edge (current-group) dir)
+	  (dirsplit dir))
+	(move-window dir))))
 
 ;; such a soup of accessors, find some simple example to work from... really need repl!
 ;;( (frame-windows (current-group) (tile-group-current-frame (current-group)))
