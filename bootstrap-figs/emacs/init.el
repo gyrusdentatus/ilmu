@@ -5,6 +5,8 @@
 (menu-bar-mode -1)
 (toggle-scroll-bar -1)
 (show-paren-mode 1)
+(setq scroll-step 1
+      scroll-conservatively 10000)
 (setq backup-directory-alist `(("." . "~/.cache/emacs")))
 
 (defun open-init-file ()
@@ -13,6 +15,7 @@
 
 (evil-set-leader '(normal visual) (kbd ","))
 
+(evil-define-key 'normal 'global (kbd "Æ") 'evil-ex) ;; icelandic keyboard Æw
 (evil-define-key 'normal 'global (kbd "<leader>c") 'open-init-file)
 (evil-define-key 'normal 'global (kbd "<leader>wj") 'evil-window-down)
 (evil-define-key 'normal 'global (kbd "<leader>wk") 'evil-window-up)
