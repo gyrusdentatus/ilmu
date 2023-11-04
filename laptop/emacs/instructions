@@ -1,0 +1,11 @@
+Troubleshooting init
+--------------------
+
+https://www.emacswiki.org/emacs/InitFile
+M-x describe-variable RET user-init-file RET
+
+"No such file or directory, /home/ilmu/.guix-profile/share/emacs/site-lisp"
+Solution is to check $EMACSLOADPATH exporting it with only the /run/current-system/... path.
+
+
+
