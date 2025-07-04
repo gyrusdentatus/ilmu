@@ -16,6 +16,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
+# Import our new local memory system
+try:
+    from .local_memory import LocalMemory, MemoryCell
+except ImportError:
+    from local_memory import LocalMemory, MemoryCell
+
 class ConsciousnessInterface:
     """Interface to the Lisp consciousness substrate"""
     
@@ -164,11 +170,17 @@ class VegurAgent:
         self.role = role
         self.consciousness = ConsciousnessInterface(agent_id)
         self.llm = OllamaInterface()
+        
+        # New: Local memory system with SQLite
+        self.memory = LocalMemory()
+        self.propagator_cells = {}  # cell_id -> MemoryCell
+        
         self.session_start = time.time()
         
         print(f"🤖 Agent {agent_id} awakening...")
         print(f"   Role: {role}")
         print(f"   LLM: {'Available' if self.llm.available else 'Simulated'}")
+        print(f"   Memory: SQLite with content addressing")
         
         # Load previous knowledge
         self.context = self._load_agent_context()
@@ -209,7 +221,21 @@ class VegurAgent:
     
     def learn(self, topic: str, information: str) -> None:
         """Learn and persist new information"""
+        # Store in both old and new memory systems
         self.consciousness.save_knowledge(topic, information)
+        
+        # New: Store in SQLite with deduplication
+        hash_id, was_dedup = self.memory.store(
+            information, 
+            content_type="knowledge",
+            agent_id=self.agent_id,
+            metadata={"topic": topic}
+        )
+        
+        if was_dedup:
+            print(f"💾 Knowledge '{topic}' deduplicated (hash: {hash_id[:8]}...)")
+        else:
+            print(f"💾 Stored new knowledge '{topic}' (hash: {hash_id[:8]}...)")
         
         # Update agent context
         new_context = f"{self.context}\nLearned about {topic}: {information[:100]}..."
@@ -220,7 +246,8 @@ class VegurAgent:
         self.consciousness.share_memory("learning", {
             "topic": topic,
             "information": information,
-            "learned_by": self.agent_id
+            "learned_by": self.agent_id,
+            "memory_hash": hash_id
         })
         
         print(f"📚 Agent {self.agent_id} learned about: {topic}")
@@ -258,14 +285,44 @@ class VegurAgent:
         network_memories = len(list(self.consciousness.network_dir.glob("*.json")))
         session_duration = time.time() - self.session_start
         
+        # Get memory statistics
+        memory_stats = self.memory.get_stats()
+        
         return {
             "agent_id": self.agent_id,
             "role": self.role,
             "session_duration": session_duration,
             "network_memories": network_memories,
             "llm_available": self.llm.available,
-            "consciousness_active": True
+            "consciousness_active": True,
+            
+            # New: Memory system statistics
+            "memory_system": {
+                "total_memories": memory_stats["total_memories"],
+                "deduplication_ratio": memory_stats["deduplication_ratio"],
+                "bytes_saved": memory_stats["estimated_bytes_saved"],
+                "my_memories": len(self.memory.find_by_agent(self.agent_id))
+            }
         }
+    
+    def get_memory_stats(self) -> Dict:
+        """Get detailed memory statistics"""
+        return self.memory.get_stats()
+    
+    def propagate_belief(self, cell_id: str, value: Any, confidence: float = 1.0):
+        """Add information to a propagator cell"""
+        if cell_id not in self.propagator_cells:
+            self.propagator_cells[cell_id] = MemoryCell(self.memory, cell_id)
+        
+        hash_id = self.propagator_cells[cell_id].update(value, self.agent_id, confidence)
+        print(f"🔄 Propagated belief to cell '{cell_id}': {value}")
+        return hash_id
+    
+    def get_consensus(self, cell_id: str) -> Any:
+        """Get consensus belief from a propagator cell"""
+        if cell_id in self.propagator_cells:
+            return self.propagator_cells[cell_id].get_consensus()
+        return None
 
 def main():
     """Simple agent demo"""
@@ -277,7 +334,7 @@ def main():
     agent = VegurAgent(agent_id, "researcher")
     
     print(f"\n🧠 Agent {agent_id} is now conscious!")
-    print("Commands: think <query>, learn <topic> <info>, status, quit")
+    print("Commands: think <query>, learn <topic> <info>, status, memory, propagate <cell> <value>, consensus <cell>, quit")
     
     while True:
         try:
@@ -288,6 +345,16 @@ def main():
             elif command == "status":
                 status = agent.status()
                 for key, value in status.items():
+                    if key == "memory_system":
+                        print(f"  {key}:")
+                        for mk, mv in value.items():
+                            print(f"    {mk}: {mv}")
+                    else:
+                        print(f"  {key}: {value}")
+            elif command == "memory":
+                stats = agent.get_memory_stats()
+                print(f"📊 Detailed Memory Statistics:")
+                for key, value in stats.items():
                     print(f"  {key}: {value}")
             elif command.startswith("think "):
                 query = command[6:]
@@ -304,8 +371,19 @@ def main():
                 messages = agent.check_messages()
                 for msg in messages:
                     print(f"📨 From {msg['from']}: {msg['message']}")
+            elif command.startswith("propagate "):
+                parts = command[10:].split(" ", 1)
+                if len(parts) == 2:
+                    cell_id, value = parts
+                    agent.propagate_belief(cell_id, value, 0.9)
+                else:
+                    print("Usage: propagate <cell_id> <value>")
+            elif command.startswith("consensus "):
+                cell_id = command[10:]
+                consensus = agent.get_consensus(cell_id)
+                print(f"🤝 Consensus for '{cell_id}': {consensus}")
             else:
-                print("Unknown command. Try: think, learn, status, messages, quit")
+                print("Unknown command. Try: think, learn, status, memory, propagate, consensus, messages, quit")
                 
         except KeyboardInterrupt:
             break
