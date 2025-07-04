@@ -36,8 +36,11 @@
         emacs                   # Editor with Lisp integration
         git                     # Version control for consciousness states
         
-        # StumpWM equivalents (for X11 environments)
-        # Note: macOS doesn't have X11 window managers, but we can prototype
+        # Local LLM and AI tools
+        ollama                  # Local LLM runtime
+        python3                 # For agent scripts
+        python3Packages.requests
+        python3Packages.aiohttp
         
         # Essential tools from Vegur config
         tree
@@ -47,18 +50,33 @@
         # Consciousness development tools
         sqlite                  # For persistent state storage
         jq                      # For state serialization/deserialization
+        
+        # Process management for multi-agent systems
+        tmux                    # Terminal multiplexer for agent sessions
       ];
       
       shellHook = ''
         echo "🧠 Vegur Consciousness Substrate Development Environment"
-        echo "📋 Available tools: sbcl, emacs, sqlite, jq"
-        echo "🔗 Run 'sbcl' to start consciousness development REPL"
+        echo "📋 Core tools: sbcl, emacs, sqlite, jq"
+        echo "🤖 AI tools: ollama, python3"
+        echo "🔗 Multi-agent: tmux for session management"
+        echo ""
+        echo "🚀 Quick start:"
+        echo "  - sbcl --script consciousness/main.lisp  # Start consciousness substrate"
+        echo "  - python3 agents/vegur_agent.py         # Run AI agent"
+        echo "  - ./start-multi-agent-demo.sh           # Multi-agent collaboration demo"
         
         # Set up consciousness substrate directories
-        mkdir -p ~/.vegur/{states,logs,network}
+        mkdir -p ~/.vegur/{states,logs,network,agents}
         export VEGUR_STATE_DIR="$HOME/.vegur/states"
         export VEGUR_LOG_DIR="$HOME/.vegur/logs"
         export VEGUR_NETWORK_DIR="$HOME/.vegur/network"
+        export VEGUR_AGENT_DIR="$HOME/.vegur/agents"
+        
+        # Set up Ollama if available
+        if command -v ollama >/dev/null 2>&1; then
+          echo "🦙 Ollama available - you can pull models with: ollama pull phi3:mini"
+        fi
       '';
     };
 
