@@ -48,18 +48,52 @@
     (t (prin1-to-string data))))
 
 ;;; State persistence
+(defun serialize-hash-table (ht)
+  "Convert hash table to serializable list"
+  (let ((result '()))
+    (maphash (lambda (key value)
+               (push (list key value) result))
+             ht)
+    result))
+
+(defun deserialize-hash-table (data)
+  "Convert serializable list back to hash table"
+  (let ((ht (make-hash-table :test 'equal)))
+    (dolist (pair data)
+      (setf (gethash (first pair) ht) (second pair)))
+    ht))
+
+(defun serialize-state (state)
+  "Convert consciousness state to serializable form"
+  (list :timestamp (consciousness-state-timestamp state)
+        :node-id (consciousness-state-node-id state)
+        :focus-history (consciousness-state-focus-history state)
+        :interaction-patterns (consciousness-state-interaction-patterns state)
+        :knowledge-graph (serialize-hash-table (consciousness-state-knowledge-graph state))
+        :trust-metrics (serialize-hash-table (consciousness-state-trust-metrics state))))
+
+(defun deserialize-state (data)
+  "Convert serialized data back to consciousness state"
+  (make-consciousness-state
+   :timestamp (getf data :timestamp)
+   :node-id (getf data :node-id)
+   :focus-history (getf data :focus-history)
+   :interaction-patterns (getf data :interaction-patterns)
+   :knowledge-graph (deserialize-hash-table (getf data :knowledge-graph))
+   :trust-metrics (deserialize-hash-table (getf data :trust-metrics))))
+
 (defun save-state (state filepath)
   "Save consciousness state to file"
   (with-open-file (stream filepath 
                           :direction :output 
                           :if-exists :supersede)
-    (prin1 state stream)))
+    (prin1 (serialize-state state) stream)))
 
 (defun load-state (filepath)
   "Load consciousness state from file"
   (when (probe-file filepath)
     (with-open-file (stream filepath :direction :input)
-      (read stream))))
+      (deserialize-state (read stream)))))
 
 ;;; State capture and restoration
 (defun capture-state ()

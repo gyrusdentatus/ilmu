@@ -1,0 +1,131 @@
+name: Consciousness Substrate Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-consciousness-substrate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install Nix
+      uses: cachix/install-nix-action@v26
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Enable Nix flakes
+      run: |
+        echo "experimental-features = nix-command flakes" | sudo tee -a /etc/nix/nix.conf
+        
+    - name: Test consciousness substrate
+      run: |
+        nix develop --command bash -c "
+          echo '🧠 Testing Vegur Consciousness Substrate'
+          
+          # Test SBCL is available
+          sbcl --version
+          
+          # Test consciousness substrate loads
+          sbcl --script consciousness/main.lisp > test_output.txt 2>&1
+          
+          # Check if consciousness state was created
+          if [ -f ~/.vegur/current.state ]; then
+            echo '✅ Consciousness state successfully created'
+            cat ~/.vegur/current.state
+          else
+            echo '❌ Failed to create consciousness state'
+            exit 1
+          fi
+          
+          # Check if network sharing worked
+          if [ -d ~/.vegur/network ] && [ \$(ls ~/.vegur/network/*.state 2>/dev/null | wc -l) -gt 0 ]; then
+            echo '✅ Network sharing successful'
+            ls -la ~/.vegur/network/
+          else
+            echo '❌ Network sharing failed'
+            exit 1
+          fi
+          
+          # Test canonical form function
+          sbcl --eval \"(load \\\"consciousness/main.lisp\\\")\" \
+               --eval \"(in-package :vegur-consciousness)\" \
+               --eval \"(format t \\\"Testing canonical form: ~A~%\\\" (canonical-form '(test thought)))\" \
+               --quit > canonical_test.txt 2>&1
+          
+          echo '📋 Test output:'
+          cat test_output.txt
+          echo '📋 Canonical test:'
+          cat canonical_test.txt
+        "
+        
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: consciousness-test-results
+        path: |
+          test_output.txt
+          canonical_test.txt
+          ~/.vegur/
+          
+  test-nix-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install Nix
+      uses: cachix/install-nix-action@v26
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Test Nix flake
+      run: |
+        echo "🔧 Testing Nix flake configuration"
+        nix flake check
+        
+    - name: Test development shell
+      run: |
+        echo "🐚 Testing development shell"
+        nix develop --command bash -c "
+          echo 'Available tools:'
+          which sbcl emacs git sqlite jq
+          echo 'SBCL version:' \$(sbcl --version)
+          echo 'Environment variables:'
+          env | grep VEGUR || echo 'No VEGUR vars set'
+        "
+        
+  test-macos-compatibility:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install Nix
+      uses: cachix/install-nix-action@v26
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Test consciousness substrate on macOS
+      run: |
+        echo "🍎 Testing consciousness substrate on macOS"
+        nix develop --command bash -c "
+          sbcl --script consciousness/main.lisp > macos_test.txt 2>&1
+          echo 'macOS test completed'
+          cat macos_test.txt
+        "
+        
+    - name: Upload macOS test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: macos-test-results
+        path: macos_test.txt
